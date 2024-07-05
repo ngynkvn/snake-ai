@@ -67,6 +67,17 @@ class QLearningAgent:
         self.epsilon_min = epsilon_min
         self.memory = deque(maxlen=10000)
     
+    def save_model(self, path):
+        torch.save({
+            "q_network": self.q_network.state_dict(),
+            "target_network": self.target_network.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "gamma": self.gamma,
+            "epsilon": self.epsilon,
+            "epsilon_decay": self.epsilon_decay,
+            "epsilon_min": self.epsilon_min,
+        }, path)
+    
     def act(self, state):
         if random.random() < self.epsilon:
             return np.random.randint(self.action_size)
@@ -126,7 +137,7 @@ def calc_reward(result: SnakeGame.Event | None, prev_state: SnakeGame.GameState,
         return 0
 
 def train(episodes, batch_size = 32, target_update = 10):
-    env = SnakeGame(width=50, height=50)
+    env = SnakeGame(width=20, height=20)
     agent = QLearningAgent(state_size=len(create_agent_state(env.state)), action_size=4)
     scores = []
     game_scores = []
@@ -150,10 +161,10 @@ def train(episodes, batch_size = 32, target_update = 10):
             total_reward += reward
 
             agent.replay(batch_size)
+            prog.set_description(f'{total_reward:0.2f}: {env.score}')
 
         if episode % target_update == 0:
             agent.update_target_network()
-        prog.set_description(f'{np.mean(scores):0.2f}: {env.score}')
         scores.append(total_reward)
         game_scores.append(env.score)
     return agent, scores, game_scores
@@ -164,6 +175,7 @@ if __name__ == "__main__":
     if not torch.backends.mps.is_available():
         if not torch.backends.mps.is_built():
             raise RuntimeError("This script requires PyTorch MPS")
+
     agent, rewards, game_scores = train(episodes=1000)
     model_state = agent.target_network.state_dict()
 

@@ -20,6 +20,8 @@ namemap = {
     RIGHT: "RIGHT",
 }
 
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+
 def render(game: SnakeGame):
     for x, y in game.snake.body:
         pygame.draw.rect(screen, (255, 255, 255), (x*10, y*10, 10, 10))
@@ -43,6 +45,7 @@ if __name__ == "__main__":
     # Pytorch model
     model = QNetwork(len(create_agent_state(game.state)), 64, 4)
     model.load_state_dict(torch.load("model.pth"))
+    model = model.to(device=device)
     model.eval()
 
     while running:
@@ -55,13 +58,13 @@ if __name__ == "__main__":
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_q:
                 running = False
 
-            if event.type == pygame.KEYDOWN and event.key in keymap:
-                directionInput = keymap[event.key]
-        # with torch.no_grad():
-        #     state = create_agent_state(game.state)
-        #     state = torch.FloatTensor(state).unsqueeze(0)
-        #     q_values = model(state)
-        #     directionInput = q_values.argmax().item()
+            # if event.type == pygame.KEYDOWN and event.key in keymap:
+            #     directionInput = keymap[event.key]
+        with torch.no_grad():
+            state = create_agent_state(game.state)
+            state = torch.FloatTensor(state).unsqueeze(0).to(device=device)
+            q_values = model(state)
+            directionInput = q_values.argmax().item()
 
 
         # fill the screen with a color to wipe away anything from last frame
@@ -75,6 +78,6 @@ if __name__ == "__main__":
         # flip() the display to put your work on screen
         pygame.display.flip()
 
-        clock.tick(12)  # limits FPS to 60
+        clock.tick(24)  # limits FPS to 60
 
     pygame.quit()

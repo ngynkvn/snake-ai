@@ -92,7 +92,9 @@ class SnakeGame:
             or pos[1] >= self.height
 
     def place_food(self):
-        pos = random.randint(0, self.width - 1), random.randint(0, self.height - 1)
+        # TODO!!!!!!!!!!!!!: 
+        # I have a bug, my model is getting stuck in a loop if the food is too close to the edges
+        pos = random.randint(2, self.width - 2), random.randint(2, self.height - 2)
         if pos not in self.snake.body:
             self.food_pos = pos
     
