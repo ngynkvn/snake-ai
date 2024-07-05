@@ -4,6 +4,7 @@ Simple snake game
 
 from dataclasses import dataclass
 import logging
+from typing import Optional
 import numpy as np
 import pygame
 
@@ -30,6 +31,51 @@ def render(game: SnakeGame):
     score_text = font.render(f"Score: {game.score}", True, (255, 255, 255))
     screen.blit(score_text, (10, 10))
 
+class Player:
+    def play(self, state, keyEvent):
+        raise NotImplementedError
+    def render_debug(self):
+        raise NotImplementedError
+
+class HumanPlayer(Player):
+    def play(self, state, keyEvent) -> Optional[int]:
+        if keyEvent == pygame.K_UP:
+            return UP
+        elif keyEvent == pygame.K_DOWN:
+            return DOWN
+        elif keyEvent == pygame.K_LEFT:
+            return LEFT
+        elif keyEvent == pygame.K_RIGHT:
+            return RIGHT
+        else:
+            return None
+    def render_debug(self):
+        pass
+class AIPlayer(Player):
+    def __init__(self, input_size) -> None:
+        super().__init__()
+        # Pytorch model
+        model = QNetwork(input_size, 64, 4)
+        # TODO: make this path configurable
+        model.load_state_dict(torch.load("model.pth"))
+        self.model = model.to(device=device).eval()
+        self.agent_state = []
+        self.nodes = []
+    def play(self, state, keyEvent) -> Optional[int]:
+        with torch.no_grad():
+            agent_state = create_agent_state(game.state)
+            state = torch.FloatTensor(agent_state).unsqueeze(0).to(device=device)
+            q_values: torch.Tensor = self.model(state)
+            directionInput = int(q_values.argmax().item())
+            self.agent_state = agent_state
+            self.nodes = (q_values / q_values.sum()).squeeze().cpu().numpy()
+        return directionInput
+    def render_debug(self):
+        for i, n in enumerate(self.agent_state):
+            pygame.draw.rect(screen, (0, max(min(255, 255*n), 0), 0), (i*12, 80, 10, 10))
+        for i, n in enumerate(self.nodes):
+            pygame.draw.rect(screen, (0, max(min(255, 255*n), 0), 0), (i*12, 100, 10, 10))
+
 if __name__ == "__main__":
     # pygame setup
     pygame.init()
@@ -43,32 +89,23 @@ if __name__ == "__main__":
 
     logging.info(f"Starting game with width={game.width} and height={game.height}")
 
-    # Pytorch model
-    model = QNetwork(len(create_agent_state(game.state)), 64, 4)
+    # player = HumanPlayer()
+    player = AIPlayer(len(create_agent_state(game.state)))
 
-    # TODO: make this path configurable
-    model.load_state_dict(torch.load("model.pth"))
-    model = model.to(device=device)
-    model.eval()
 
     while running:
         # poll for events
         # pygame.QUIT event means the user clicked X to close your window
-        directionInput = None
+        keyEvent = None
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_q:
                 running = False
-
-            # if event.type == pygame.KEYDOWN and event.key in keymap:
-            #     directionInput = keymap[event.key]
-        with torch.no_grad():
-            agent_state = create_agent_state(game.state)
-            state = torch.FloatTensor(agent_state).unsqueeze(0).to(device=device)
-            q_values: torch.Tensor = model(state)
-            nodes = (q_values / q_values.sum()).squeeze().cpu().numpy()
-            directionInput = int(q_values.argmax().item())
+            elif event.type == pygame.KEYDOWN and event.key in keymap:
+                keyEvent = event.key
+        
+        playerInput = player.play(game.state, keyEvent)
 
 
         # fill the screen with a color to wipe away anything from last frame
@@ -76,12 +113,9 @@ if __name__ == "__main__":
 
         # RENDER YOUR GAME HERE
         prev_state = game.state
-        result = game.tick(directionInput)
+        result = game.tick(playerInput)
         render(game)
-        for i, n in enumerate(agent_state):
-            pygame.draw.rect(screen, (0, max(min(255, 255*n), 0), 0), (i*12, 80, 10, 10))
-        for i, n in enumerate(nodes):
-            pygame.draw.rect(screen, (0, max(min(255, 255*n), 0), 0), (i*12, 100, 10, 10))
+        player.render_debug()
 
         # flip() the display to put your work on screen
         pygame.display.flip()
