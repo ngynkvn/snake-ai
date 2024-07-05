@@ -55,20 +55,21 @@ if __name__ == "__main__":
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_q:
                 running = False
 
-            # if event.type == pygame.KEYDOWN and event.key in keymap:
-            #     directionInput = keymap[event.key]
-        with torch.no_grad():
-            state = create_agent_state(game.state)
-            state = torch.FloatTensor(state).unsqueeze(0)
-            q_values = model(state)
-            directionInput = q_values.argmax().item()
+            if event.type == pygame.KEYDOWN and event.key in keymap:
+                directionInput = keymap[event.key]
+        # with torch.no_grad():
+        #     state = create_agent_state(game.state)
+        #     state = torch.FloatTensor(state).unsqueeze(0)
+        #     q_values = model(state)
+        #     directionInput = q_values.argmax().item()
 
 
         # fill the screen with a color to wipe away anything from last frame
         screen.fill("black")
 
         # RENDER YOUR GAME HERE
-        game.tick(directionInput)
+        prev_state = game.state
+        result = game.tick(directionInput)
         render(game)
 
         # flip() the display to put your work on screen

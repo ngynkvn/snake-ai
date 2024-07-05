@@ -2,8 +2,11 @@
 Map pygame key codes to snake directions
 """
 from dataclasses import dataclass
+import logging
 import random
+import numpy as np
 import pygame
+
 
 
 UP = 0
@@ -83,7 +86,10 @@ class SnakeGame:
         return self.state
     
     def out_of_bounds(self, pos):
-        return pos[0] < 0 or pos[0] >= self.width or pos[1] < 0 or pos[1] >= self.height
+        return pos[0] < 0 \
+            or pos[0] >= self.width \
+            or pos[1] < 0 \
+            or pos[1] >= self.height
 
     def place_food(self):
         pos = random.randint(0, self.width - 1), random.randint(0, self.height - 1)
@@ -94,13 +100,16 @@ class SnakeGame:
     def tick(self, key: int | None) -> Event | None:
         if self.gameover:
             return self.Event("gameover")
-
+        prev_head = self.snake.head
         event = self.snake.tick(key)
+        next_head = self.snake.head
         if event == "gameover":
             self.gameover = True
             return self.Event("gameover")
         if self.out_of_bounds(self.snake.head):
             self.gameover = True
+            logging.info(f"Game over: Snake hit the wall {prev_head} -> {next_head}")
+            logging.info(f"{create_agent_state(self.state)}")
             return self.Event("gameover")
         if self.snake.body[0] == self.food_pos:
             self.score += 1
@@ -120,3 +129,25 @@ class SnakeGame:
             height=self.height,
         )
     
+def create_agent_state(state: SnakeGame.GameState):
+    hx, hy = state.snake.head
+    fx, fy = state.food
+
+    width = state.width
+    height = state.height
+    right_kills = hx + 1 >= width or (hx + 1, hy) in state.snake.body
+    left_kills = hx - 1 <= 0 or (hx - 1, hy) in state.snake.body
+    up_kills = hy - 1 < 0 or (hx, hy - 1) in state.snake.body
+    down_kills = hy + 1 >= height or (hx, hy + 1) in state.snake.body
+
+    return np.array([
+        hx / state.width, hy / state.height, # head normalized position
+        fx / state.width, fy / state.height, # food normalized position
+        int(fx > hx), int(fx < hx), # food direction
+        int(fy > hy), int(fy < hy),
+        # danger detection
+        int(right_kills), 
+        int(left_kills), 
+        int(up_kills), 
+        int(down_kills),
+    ])
