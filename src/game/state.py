@@ -100,7 +100,8 @@ class SnakeGame:
     def tick(self, key: int | None) -> Event | None:
         if self.gameover:
             return self.Event("gameover")
-        prev_head = self.snake.head
+        prev_state = self.state
+        prev_head = prev_state.snake.head
         event = self.snake.tick(key)
         next_head = self.snake.head
         if event == "gameover":
@@ -109,7 +110,7 @@ class SnakeGame:
         if self.out_of_bounds(self.snake.head):
             self.gameover = True
             logging.info(f"Game over: Snake hit the wall {prev_head} -> {next_head}")
-            logging.info(f"{agent_state_labels(create_agent_state(self.state))}")
+            logging.info(f"State before death:\n{agent_state_labels(create_agent_state(prev_state))}")
             return self.Event("gameover")
         if self.snake.body[0] == self.food_pos:
             self.score += 1

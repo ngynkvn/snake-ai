@@ -2,10 +2,8 @@
 Simple snake game
 """
 
-from dataclasses import dataclass
 import logging
 from typing import Optional
-import numpy as np
 import pygame
 
 import torch
@@ -55,9 +53,10 @@ class AIPlayer(Player):
     def __init__(self, input_size) -> None:
         super().__init__()
         # Pytorch model
-        model = QNetwork(input_size, 64, 4)
         # TODO: make this path configurable
-        model.load_state_dict(torch.load("model.pth"))
+        state_dict = torch.load("model.pth")
+        model = QNetwork(input_size, 128, 4)
+        model.load_state_dict(state_dict)
         self.model = model.to(device=device).eval()
         self.agent_state = []
         self.nodes = []

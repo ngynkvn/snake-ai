@@ -53,7 +53,7 @@ class QNetwork(nn.Module):
         return x
 
 class QLearningAgent:
-    def __init__(self, state_size, action_size, hidden_size=64, lr=1e-3, gamma=0.99, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.01):
+    def __init__(self, state_size, action_size, hidden_size=128, lr=1e-3, gamma=0.99, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.01):
         self.action_size = action_size
         self.q_network = QNetwork(state_size, hidden_size, action_size)
         self.q_network = self.q_network.to(device=device)
@@ -79,10 +79,12 @@ class QLearningAgent:
         }, path)
     
     def act(self, state):
+        # Random action with probability epsilon
         if random.random() < self.epsilon:
             return np.random.randint(self.action_size)
         with torch.no_grad():
             state = torch.FloatTensor(state).unsqueeze(0).to(device=device)
+            # Get the Q-values for all possible actions given the current state
             q_values = self.q_network(state)
             return q_values.argmax().item()
     
@@ -127,7 +129,7 @@ def calc_reward(result: SnakeGame.Event | None, prev_state: SnakeGame.GameState,
         fx, fy = state.food
         curr_dist = abs((fx - hx)) + abs(fy - hy)
         # Reward for moving towards food
-        return 1 if curr_dist < prev_dist else -1
+        return prev_dist - curr_dist - 0.1 * (prev_dist < curr_dist)
     elif result.type == "gameover":
         return -10
     elif result.type == "ate":
@@ -137,7 +139,7 @@ def calc_reward(result: SnakeGame.Event | None, prev_state: SnakeGame.GameState,
         return 0
 
 def train(episodes, batch_size = 32, target_update = 10):
-    env = SnakeGame(width=20, height=20)
+    env = SnakeGame(width=50, height=50)
     agent = QLearningAgent(state_size=len(create_agent_state(env.state)), action_size=4)
     scores = []
     game_scores = []
@@ -177,13 +179,13 @@ if __name__ == "__main__":
         if not torch.backends.mps.is_built():
             raise RuntimeError("This script requires PyTorch MPS")
 
-    agent, rewards, game_scores = train(episodes=1000, batch_size=64, target_update=20)
+    agent, rewards, game_scores = train(episodes=200, batch_size=256, target_update=10)
     model_state = agent.target_network.state_dict()
 
+
+    print(f"Average score over last 100 episodes: {np.mean(rewards[-100:]):.2f}")
+    torch.save(model_state, "model.pth")
     plt.plot(rewards, label="Reward")
     plt.plot(game_scores, label="Score")
     plt.legend()
     plt.show()
-
-    print(f"Average score over last 100 episodes: {np.mean(rewards[-100:]):.2f}")
-    torch.save(model_state, "model.pth")
