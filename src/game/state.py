@@ -92,9 +92,7 @@ class SnakeGame:
             or pos[1] >= self.height
 
     def place_food(self):
-        # TODO!!!!!!!!!!!!!: 
-        # I have a bug, my model is getting stuck in a loop if the food is too close to the edges
-        pos = random.randint(2, self.width - 2), random.randint(2, self.height - 2)
+        pos = random.randint(0, self.width - 1), random.randint(0, self.height - 1)
         if pos not in self.snake.body:
             self.food_pos = pos
     
@@ -111,7 +109,7 @@ class SnakeGame:
         if self.out_of_bounds(self.snake.head):
             self.gameover = True
             logging.info(f"Game over: Snake hit the wall {prev_head} -> {next_head}")
-            logging.info(f"{create_agent_state(self.state)}")
+            logging.info(f"{agent_state_labels(create_agent_state(self.state))}")
             return self.Event("gameover")
         if self.snake.body[0] == self.food_pos:
             self.score += 1
@@ -146,10 +144,26 @@ def create_agent_state(state: SnakeGame.GameState):
         hx / state.width, hy / state.height, # head normalized position
         fx / state.width, fy / state.height, # food normalized position
         int(fx > hx), int(fx < hx), # food direction
-        int(fy > hy), int(fy < hy),
+        int(fy < hy), int(fy > hy),
         # danger detection
         int(right_kills), 
         int(left_kills), 
         int(up_kills), 
         int(down_kills),
     ])
+
+def agent_state_labels(state: np.ndarray):
+    return {
+        "head_x": f"{state[0]:.2f}",
+        "head_y": f"{state[1]:.2f}",
+        "food_x": f"{state[2]:.2f}",
+        "food_y": f"{state[3]:.2f}",
+        "food_right": f"{state[4]:.2f}",
+        "food_left": f"{state[5]:.2f}",
+        "food_up": f"{state[6]:.2f}",
+        "food_down": f"{state[7]:.2f}",
+        "right_kills": f"{state[8]:.2f}",
+        "left_kills": f"{state[9]:.2f}",
+        "up_kills": f"{state[10]:.2f}",
+        "down_kills": f"{state[11]:.2f}",
+    }

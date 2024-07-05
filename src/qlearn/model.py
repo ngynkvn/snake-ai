@@ -21,10 +21,10 @@ def create_agent_state(state: SnakeGame.GameState):
 
     width = state.width
     height = state.height
-    right_kills = hx + 1 >= width or (hx + 1, hy) in state.snake.body
-    left_kills = hx - 1 <= 0 or (hx - 1, hy) in state.snake.body
-    up_kills = hy - 1 < 0 or (hx, hy - 1) in state.snake.body
-    down_kills = hy + 1 >= height or (hx, hy + 1) in state.snake.body
+    right_kills = (hx + 1) >= width or (hx + 1, hy) in state.snake.body
+    left_kills = (hx - 1) < 0 or (hx - 1, hy) in state.snake.body
+    up_kills = (hy - 1) < 0 or (hx, hy - 1) in state.snake.body
+    down_kills = (hy + 1) >= height or (hx, hy + 1) in state.snake.body
 
     return np.array([
         hx / state.width, hy / state.height, # head normalized position
@@ -97,7 +97,7 @@ class QLearningAgent:
         states = torch.FloatTensor(np.array(states)).to(device=device)
         actions = torch.LongTensor(actions).to(device=device)
         rewards = torch.FloatTensor(rewards).to(device=device)
-        next_states = torch.FloatTensor(next_states).to(device=device)
+        next_states = torch.FloatTensor(np.array(next_states)).to(device=device)
         dones = torch.FloatTensor(dones).to(device=device)
 
         q_values = self.q_network(states).gather(1, actions.unsqueeze(1))
@@ -152,6 +152,7 @@ def train(episodes, batch_size = 32, target_update = 10):
             state = create_agent_state(prev_game_state)
             action = agent.act(state)
             result = env.tick(action)
+
             next_state = create_agent_state(env.state)
             reward = calc_reward(result, prev_game_state, env.state)
             done = env.gameover
@@ -176,7 +177,7 @@ if __name__ == "__main__":
         if not torch.backends.mps.is_built():
             raise RuntimeError("This script requires PyTorch MPS")
 
-    agent, rewards, game_scores = train(episodes=1000)
+    agent, rewards, game_scores = train(episodes=1000, batch_size=64, target_update=20)
     model_state = agent.target_network.state_dict()
 
     plt.plot(rewards, label="Reward")

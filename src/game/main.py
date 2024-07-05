@@ -4,6 +4,7 @@ Simple snake game
 
 from dataclasses import dataclass
 import logging
+import numpy as np
 import pygame
 
 import torch
@@ -44,6 +45,8 @@ if __name__ == "__main__":
 
     # Pytorch model
     model = QNetwork(len(create_agent_state(game.state)), 64, 4)
+
+    # TODO: make this path configurable
     model.load_state_dict(torch.load("model.pth"))
     model = model.to(device=device)
     model.eval()
@@ -61,10 +64,11 @@ if __name__ == "__main__":
             # if event.type == pygame.KEYDOWN and event.key in keymap:
             #     directionInput = keymap[event.key]
         with torch.no_grad():
-            state = create_agent_state(game.state)
-            state = torch.FloatTensor(state).unsqueeze(0).to(device=device)
-            q_values = model(state)
-            directionInput = q_values.argmax().item()
+            agent_state = create_agent_state(game.state)
+            state = torch.FloatTensor(agent_state).unsqueeze(0).to(device=device)
+            q_values: torch.Tensor = model(state)
+            nodes = (q_values / q_values.sum()).squeeze().cpu().numpy()
+            directionInput = int(q_values.argmax().item())
 
 
         # fill the screen with a color to wipe away anything from last frame
@@ -74,6 +78,10 @@ if __name__ == "__main__":
         prev_state = game.state
         result = game.tick(directionInput)
         render(game)
+        for i, n in enumerate(agent_state):
+            pygame.draw.rect(screen, (0, max(min(255, 255*n), 0), 0), (i*12, 80, 10, 10))
+        for i, n in enumerate(nodes):
+            pygame.draw.rect(screen, (0, max(min(255, 255*n), 0), 0), (i*12, 100, 10, 10))
 
         # flip() the display to put your work on screen
         pygame.display.flip()
