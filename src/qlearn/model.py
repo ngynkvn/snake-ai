@@ -129,7 +129,7 @@ def calc_reward(result: SnakeGame.Event | None, prev_state: SnakeGame.GameState,
         fx, fy = state.food
         curr_dist = abs((fx - hx)) + abs(fy - hy)
         # Reward for moving towards food
-        return prev_dist - curr_dist - 0.1 * (prev_dist < curr_dist)
+        return prev_dist - curr_dist - 0.1 * (prev_dist < curr_dist) + 0.2 * (curr_dist < prev_dist)
     elif result.type == "gameover":
         return -10
     elif result.type == "ate":
